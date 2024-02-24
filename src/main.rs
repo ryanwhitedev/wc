@@ -32,7 +32,7 @@ impl Args {
     fn parse(args: Vec<String>) -> Self {
         let (files, options): (Vec<_>, Vec<_>) = args
             .into_iter()
-            .partition(|arg| arg.len() > 1 && !arg.starts_with("-") && !arg.starts_with("--"));
+            .partition(|arg| arg.len() > 1 && !arg.starts_with('-') && !arg.starts_with("--"));
 
         let mut bytes = false;
         let mut chars = false;
@@ -63,7 +63,7 @@ impl Args {
                     }
                 } else {
                     option
-                        .strip_prefix("-")
+                        .strip_prefix('-')
                         .unwrap()
                         .chars()
                         .for_each(|opt| match opt {
@@ -139,19 +139,19 @@ impl WordCount {
     }
 }
 
-fn total(results: &Vec<Result<WordCount, String>>) -> WordCount {
+fn total(results: &[Result<WordCount, String>]) -> WordCount {
     let mut bytes = 0;
     let mut chars = 0;
     let mut lines = 0;
     let mut words = 0;
-    for result in results {
-        if let Ok(count) = result {
-            bytes += count.bytes;
-            chars += count.chars;
-            lines += count.lines;
-            words += count.words;
-        }
-    }
+
+    results.iter().flatten().for_each(|count| {
+        bytes += count.bytes;
+        chars += count.chars;
+        lines += count.lines;
+        words += count.words;
+    });
+
     let filename = String::from("total");
     WordCount {
         filename,
@@ -179,7 +179,7 @@ fn print_output(mut results: Vec<Result<WordCount, String>>, args: &Args) {
 
     // Print results
     results.iter().for_each(|res| match res {
-        Ok(wc) => wc.print(offset, &args),
+        Ok(wc) => wc.print(offset, args),
         Err(e) => println!("{}", e),
     });
 }
@@ -195,11 +195,11 @@ fn count(args: &Args) -> Vec<Result<WordCount, String>> {
         let mut buffer = String::new();
         io::stdin().read_to_string(&mut buffer).unwrap();
 
-        let result = WordCount::parse("".to_string(), &buffer, &args);
+        let result = WordCount::parse("".to_string(), &buffer, args);
         results.push(Ok(result));
     } else {
         for file in &args.files {
-            let mut f = match File::open(&file) {
+            let mut f = match File::open(file) {
                 Ok(f) => f,
                 Err(_) => {
                     results.push(Err(format!("wc: {}: No such file or directory", &file)));
@@ -209,7 +209,7 @@ fn count(args: &Args) -> Vec<Result<WordCount, String>> {
             let mut buffer = String::new();
             f.read_to_string(&mut buffer).expect("Unable to read file");
 
-            let result = WordCount::parse(file.clone(), &buffer, &args);
+            let result = WordCount::parse(file.clone(), &buffer, args);
             results.push(Ok(result));
         }
     }
